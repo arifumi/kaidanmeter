@@ -1,0 +1,19 @@
+Simple NFC reader for Android based on the sample code from the Android SDK.
+
+The app is available on Android Market.
+https://market.android.com/details?id=se.anyro.nfc_reader
+
+開発メモ
+- サーバにアップロード処理
+- マルチスレッド化した。
+- データ送信するときにdialogを出すようにしてみた。バックグラウンド処理しないといけないので不要かも。
+- cookieのsessionidを取得して、サーバにアップロードする際にsessionidを使うようにしてみた。
+- 初回起動時に、sessionidを取得するように空のPOSTを実行するようにした
+
+TODO
+- 見た目を良くする
+- ニックネーム機能を作る
+- オフライン処理(データ通信がオフの時に送信データをstoreしておいて、オンになったときに全部シンクする)
+- 一定時間以内に(30秒ぐらい)、同じmIdのタグが読まれたら無視するようなチート対策。
+- というか、30秒か１分ぐらい追加の読み取りが無ければそこで階段利用終了と判断して一気にアップロードするというロジックの方がいい気がしてきた。
+-- その時には、携帯側の最初もしくは最終の時刻を全てのpostに同一の値をセットしてアップロードするようにしよう。
