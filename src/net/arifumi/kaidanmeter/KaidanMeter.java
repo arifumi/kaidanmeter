@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2011 Adam Nyb劃k
+ * Copyright (C) 2011 Adam Nyb蜉ヌ
  * Copyright (C) 2011 Some Japanese person/company?
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,6 @@ import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import net.arifumi.kaidanmeter.record.ParsedNdefRecord;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -52,20 +51,24 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.MifareClassic;
 import android.nfc.tech.MifareUltralight;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
+import android.text.InputType;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -93,9 +96,12 @@ class kaidanMove {
 }
 
 public class KaidanMeter extends Activity {
-
+	private final int FP = ViewGroup.LayoutParams.FILL_PARENT; 
+	private final int WC = ViewGroup.LayoutParams.WRAP_CONTENT; 
+	
     private SimpleDateFormat timeFormat = new SimpleDateFormat();
     private LinearLayout mTagContent;
+    private TextView statusTV;
     private String sessionid = "";
     private NfcAdapter mAdapter;
     private PendingIntent mPendingIntent;
@@ -105,58 +111,58 @@ public class KaidanMeter extends Activity {
     Handler mHandler = new Handler();
     private String mId = null;
     private Timer uptimer = null;
-    public String hoge = "";
     private CookieManager manager;
     public ArrayList<kaidanMove> moveList;
     public HashMap<String, ArrayList<String>> kaidanMap;
-    public EditText edtInput;
-    public String nickName = null;
 
-    public boolean onCreateOptionsMenu(Menu menu){
-    	 super.onCreateOptionsMenu(menu);
-    	 getMenuInflater().inflate(R.menu.menu,menu);
-    	 return true;
-    }
+    public String nickName = null;
     
-    // メニューのアイテムが選択された時に実行されるメソッド
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-    	// Create EditText
-    	edtInput = new EditText(this);
-    	// Show Dialog
-    	new AlertDialog.Builder(this)
-    	.setIcon(R.drawable.icon)
-    	.setTitle("Input your nickname")
-    	.setView(edtInput)
-    	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-    		public void onClick(DialogInterface dialog, int whichButton) {
-    			/* OKボタンをクリックした時の処理 */
-//    			new AlertDialog.Builder(KaidanMeter.this)
-//    			.setTitle("食べるもの: " + edtInput.getText().toString())
-//    			.show();
-    			nickName = edtInput.getText().toString();
-    		}
-    	})
-    	.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-    		public void onClick(DialogInterface dialog, int whichButton) {
-    			/* Cancel ボタンをクリックした時の処理 */
-    		}
-    	})
-    	.show();
-    	return true;
-    }
- 
-    
+    private static final int MENU_ID_MENU1 = (Menu.FIRST + 1);
+    private static final int MENU_ID_MENU2 = (Menu.FIRST + 2);
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
         setContentView(R.layout.tag_viewer);
         
-        mTagContent = (LinearLayout) findViewById(R.id.list);
+        LinearLayout ll = (LinearLayout) findViewById(R.id.layout_main);
+        
+ //       mTagContent = (LinearLayout) findViewById(R.id.list);
     	moveList = new ArrayList<kaidanMove>();
     	kaidanMap = new HashMap<String, ArrayList<String>>();
     	pendingMove = null;
+    	
+    	ImageView image1 = new ImageView(this);
+    	image1.setImageResource(R.drawable.icon2);
+    	image1.setAlpha(150);
+    	ll.addView(image1, new LinearLayout.LayoutParams(WC,WC));
+/*    	
+    	TextView text1 = new TextView(this);
+        text1.setText("KDN48");
+        text1.setTextSize(40);
+        ll.addView(text1, new LinearLayout.LayoutParams(WC, WC));
 
+        TextView text2 = new TextView(this);
+        text2.setText("Kaidan with 48 IC Tags Project");
+        text2.setTextSize(20);
+        text2.setHeight(60);
+        text2.setGravity(Gravity.TOP);
+        ll.addView(text2, new LinearLayout.LayoutParams(FP, WC));
+ */
+        statusTV = new TextView(this);
+        statusTV.setText("");
+        statusTV.setTextSize(20);
+        statusTV.setTextColor(Color.BLACK);
+        statusTV.setHeight(100);
+        statusTV.setBackgroundColor(Color.argb(100, 100, 100, 100));
+        statusTV.setGravity(Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL);
+        ll.addView(statusTV, new LinearLayout.LayoutParams(FP, WC));
+
+        mTagContent = new LinearLayout(this);
+        mTagContent.setOrientation(LinearLayout.VERTICAL);
+        ll.addView(mTagContent, new LinearLayout.LayoutParams(FP, FP));
+        
     	try {
         	InputStream is = getAssets().open("kaidandata.txt");
         	BufferedReader br = new BufferedReader(new InputStreamReader(is));
@@ -178,8 +184,7 @@ public class KaidanMeter extends Activity {
     	}
 
         resolveIntent(getIntent());
-        onOptionsItemSelected(null);
-
+/*
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD_MR1) {
             mAdapter = NfcAdapter.getDefaultAdapter(this);
             mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass())
@@ -187,9 +192,80 @@ public class KaidanMeter extends Activity {
             mNdefPushMessage = new NdefMessage(new NdefRecord[] { newTextRecord("Message from NFC Reader :-)",
                     Locale.ENGLISH, true) });
         }
-
+  */      
+        // sessionidの読み出し
+        SharedPreferences sp = getSharedPreferences("sessionid", Context.MODE_PRIVATE);
+        sessionid = sp.getString("id","");
+        nickName = sp.getString("nick","");
+        buildTagViews("onCreate sessionid="+sessionid+",nickname="+nickName);
+        
+        // idListをシリアライズ化から戻す
+        
+        // ニックネームの設定を促す
+        if ( nickName == null || nickName == "" ) {
+        	onOptionsItemSelected(null);
+        }
+        
+       statusTV.setText("階段の利用を開始する階で、ICタグを読み取ってください");
     }
 
+    public boolean onCreateOptionsMenu(Menu menu){
+   	 super.onCreateOptionsMenu(menu);
+   	menu.add(0 , MENU_ID_MENU1 , Menu.NONE , "Settings").setIcon(android.R.drawable.ic_menu_edit);
+   	menu.add(0 , MENU_ID_MENU2 ,Menu.NONE , "About").setIcon(android.R.drawable.ic_menu_info_details);
+   	 return true;
+   }
+   
+   @Override
+   public boolean onOptionsItemSelected(MenuItem item) {
+ //  	System.out.println(item.getItemId());
+   	int s;
+       final EditText edtInput;
+   	if (item == null) {
+   		s = MENU_ID_MENU1;
+   	} else {
+   		s = item.getItemId();
+   	}
+   	
+   	switch (s) {
+   	case MENU_ID_MENU1:
+ 
+      	// Create EditText
+   	edtInput = new EditText(this);
+   	edtInput.setInputType(InputType.TYPE_CLASS_TEXT);
+   	edtInput.setText(nickName);
+   	// Show Dialog
+   	new AlertDialog.Builder(this)
+   	.setIcon(R.drawable.icon2)
+   	.setTitle("ニックネーム設定")
+   	.setView(edtInput)
+   	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+   		public void onClick(DialogInterface dialog, int whichButton) {
+   			nickName = edtInput.getText().toString();
+   		}
+   	})
+   	.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+   		public void onClick(DialogInterface dialog, int whichButton) {
+   		}
+   	})
+   	.show();
+   	break;
+     	case MENU_ID_MENU2:
+     	   	new AlertDialog.Builder(this)
+       	.setIcon(R.drawable.icon2)
+       	.setTitle("スマホで階段利用プロジェクト")
+       	.setMessage("Developed by Arifumi Matsumoto.\nPromoted and supported by 武蔵野地区通研分会\n"+sessionid)
+       	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+       		public void onClick(DialogInterface dialog, int whichButton) {
+       		}
+       	})
+       	.show();
+     	   	break;
+   	}
+   	return true;
+   }
+
+   
     @Override
     protected void onResume() {
         super.onResume();
@@ -197,19 +273,21 @@ public class KaidanMeter extends Activity {
             mAdapter.enableForegroundDispatch(this, mPendingIntent, null, null);
             mAdapter.enableForegroundNdefPush(this, mNdefPushMessage);
         }
-        manager = new CookieManager();
-        //	 CookieHandler のデフォルトに設定
-        CookieHandler.setDefault(manager);    	// データの読み出し
+        manager = new CookieManager();  
+//   	 CookieHandler のデフォルトに設定
+        CookieHandler.setDefault(manager);
         // sessionidの読み出し
         SharedPreferences sp = getSharedPreferences("sessionid", Context.MODE_PRIVATE);
         sessionid = sp.getString("id","");
-        System.out.println("onResume sessionid="+sessionid);
-        // nicknameの読み出し
-//        SharedPreferences sp2 = getSharedPreferences("nick", Context.MODE_PRIVATE);
-//        nickName = sp2.getString("nick","");
-//        System.out.println("onResume nickname="+sessionid);
+        nickName = sp.getString("nick","");
+        buildTagViews("onResume sessionid="+sessionid+",nickname="+nickName);
         
         // idListをシリアライズ化から戻す
+        
+        // ニックネームの設定を促す
+        if ( nickName == null ) {
+        	onOptionsItemSelected(null);
+        }
         
         // スレッドを動かす
         uptimer = new Timer();
@@ -225,9 +303,9 @@ public class KaidanMeter extends Activity {
         				for(Iterator<kaidanMove> it = moveList.iterator(); it.hasNext() ; ){
         					final kaidanMove move = it.next();
 
-        					int result = httpPostRequest("start="+move.floor_num_start+"&end="+move.floor_num_end, "UTF-8");
+        					int result = httpPostRequest("start="+move.floor_num_start+"&end="+move.floor_num_end+"&nick="+nickName, "UTF-8");
         				    System.out.println(i+":"+move.floor_num_start+"->"+move.floor_num_end+"="+result);
-        				    i++;
+         				    i++;
         				    if (result>0) {
         				    	delList.add(move);
         				    }
@@ -235,22 +313,20 @@ public class KaidanMeter extends Activity {
         				final ArrayList<kaidanMove> fdelList = new ArrayList<kaidanMove>(delList);
 				    	mHandler.post(new Runnable() {
     						public void run() {
-				    	        LinearLayout content = mTagContent;
-
+	//			    	        LinearLayout content = mTagContent;
 				    	        // アップロードが成功した場合は、idListから該当IDを削除する
     	        				for(Iterator<kaidanMove> it = fdelList.iterator(); it.hasNext() ; ){
-    								moveList.remove(it.next());   					
-    				    			// 画面からも消去する。
-    				    	        content.removeViewAt(0);
-    				    	        content.removeViewAt(0);
-    				    	        content.removeViewAt(0);
+    								moveList.remove(it.next());  
+    								// 画面からも消去する。
+    								//content.removeViewAt(0);
     	        				}
-    	        				System.out.println("movelist size ="+moveList.size());
+    	        				//System.out.println("movelist size ="+moveList.size());
+    	        				buildTagViews("movelist size="+moveList.size());
 				    		}
 				    	});
 
         			}
-        		}, 0, 5000);
+        		}, 0, 10000);
 
     }
 
@@ -269,15 +345,27 @@ public class KaidanMeter extends Activity {
         SharedPreferences sp = getSharedPreferences("sessionid", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sp.edit();
         editor.putString("id",sessionid);
+        editor.putString("nick", nickName);
         editor.commit();
-        System.out.println("onPause sessionid="+sessionid);
+        buildTagViews("onPause sessionid="+sessionid);
     }
 
     private void resolveIntent(Intent intent) {
         // Parse the intent
 
         String action = intent.getAction();
-        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+        if (action.equalsIgnoreCase(Intent.ACTION_SEND) && intent.hasExtra(Intent.EXTRA_TEXT)) {
+            mId = intent.getStringExtra(Intent.EXTRA_TEXT); 
+
+            buildTagViews(mId+"を読み込みました");
+ /*       } else {
+        	buildTagViews("intent="+intent.toString());
+ */
+            }
+    /*    else if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) ||
+        		NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action) ||
+        		NfcAdapter.ACTION_TECH_DISCOVERED.equals(action)
+        		) {
             // When a tag is discovered we send it to the service to be save. We
             // include a PendingIntent for the service to call back onto. This
             // will cause this activity to be restarted with onNewIntent(). At
@@ -315,52 +403,73 @@ public class KaidanMeter extends Activity {
             }
             // Setup the views
             buildTagViews(msgs);
-            
+        }
+        */
+    	if (mId == null || mId == "" ) {
+    		return;
+    	}
+    	
+            if (kaidanMap.get(mId) == null) {
+             statusTV.setText("不正なICタグです");
+            	return;
+            }
+
             if (pendingMove == null) {
+            	buildTagViews("pendingMove==null");
+              statusTV.setText("階段利用が終了した階でICタグを読み取ってください");
             	pendingMove = new kaidanMove();
             	pendingMove.floor_num_start = Integer.parseInt(kaidanMap.get(mId).get(0));
             	pendingMove.floor_str_start = kaidanMap.get(mId).get(1) + pendingMove.floor_num_start + "階";
             	pendingMove.timestamp_start = System.currentTimeMillis();
             } else {
+            	buildTagViews("pendingMove!=null");
             	// 条件処理 (同じ階の場合は処理しない)
+                statusTV.setText("別の階でICタグを読み取ってください");
             	pendingMove.floor_num_end = Integer.parseInt(kaidanMap.get(mId).get(0));
             	if (pendingMove.floor_num_end == pendingMove.floor_num_start) {
-            			return;
+            			buildTagViews("on the same floor");
+            	//DEBUG		return;
             	}
             	pendingMove.floor_str_end = kaidanMap.get(mId).get(1) + pendingMove.floor_num_end + "階";
             	pendingMove.timestamp_end = System.currentTimeMillis();
             	// 条件処理 (時間処理) 1フロアにつき、3秒〜30秒の制限時間を付ける
             	int floors = Math.abs(pendingMove.floor_num_end - pendingMove.floor_num_start);
+//        		floors = 1; //DEBUG
             	long duration = pendingMove.timestamp_end - pendingMove.timestamp_start;
             	if (duration > 3000 * floors && duration < 30000 * floors ) {
-                    // ArrayListÉkaidanMoveðËÁÞ
-                    moveList.add(pendingMove);
+            		moveList.add(pendingMove);
+        			buildTagViews(floors+" floors are moved by.");
+                    statusTV.setText("階段の利用お疲れさまでした");
                     pendingMove = null;            		
             	}
             }
 
-        }
+        
     }
+    
+    
     
     private int httpPostRequest( String requestParams, String encode ){  
     	final String url_str = "http://vps.arifumi.net/mtsuken/post.php";
 
+		System.out.println("in httpPostRequest("+requestParams+")");
     	if (sessionid == "") {
+    		System.out.println("session id is not obtained.");
     		// cookieを取得しにいく	
     		try {
     			URL url = new URL(url_str);
 				HttpURLConnection http = (HttpURLConnection)url.openConnection();
 				http.setRequestMethod("POST");
-				//         http.setDoOutput(true); // ←☆POSTによるデータ送信を可能にします
-				// = "hoge=test&fuga=test2";
-				PrintStream ps = new PrintStream(http.getOutputStream());
-				ps.close();  	
+	            http.setDoOutput(true);
+	            PrintStream ps = new PrintStream(http.getOutputStream());
+	            ps.print("");
+	            ps.close();
 				int response = http.getResponseCode();
 				System.out.println("Response0: " + response);
 				http.disconnect(); 
     		} catch (IOException e) {
-        		// 例外処理
-     		   e.printStackTrace();
+    			e.printStackTrace();
+    			System.out.println("IOException:"+e.getMessage());
      		   return -1;
         	}
     		// Cookie の表示
@@ -375,7 +484,7 @@ public class KaidanMeter extends Activity {
         	}
     	}
 
-	// Cookieの復元
+    	// Cookieの復元
     	HttpCookie cookiesess = new HttpCookie("PHPSESSID", sessionid);
     	cookiesess.setDomain("vps.arifumi.net");
     	cookiesess.setPath("/mtsuken");
@@ -388,13 +497,12 @@ public class KaidanMeter extends Activity {
     		return -1;
     	}
 
-        
-        // サーバに接続
-        try {
+    	// サーバに接続
+    	try {
             URL url = new URL(url_str);
             HttpURLConnection http = (HttpURLConnection)url.openConnection();
             http.setRequestMethod("POST");
-            http.setDoOutput(true); // ←☆POSTによるデータ送信を可能にします
+            http.setDoOutput(true);
             // = "hoge=test&fuga=test2";
             PrintStream ps = new PrintStream(http.getOutputStream());
             ps.print(requestParams);
@@ -415,8 +523,7 @@ public class KaidanMeter extends Activity {
             reader.close();
             http.disconnect();        
         } catch (IOException e) {
-            // 例外処理
- 		   e.printStackTrace();
+            e.printStackTrace();
  		   return -1;
         }
 
@@ -615,8 +722,8 @@ public class KaidanMeter extends Activity {
         return result;
     }
 
-    void buildTagViews(NdefMessage[] msgs) {
-        if (msgs == null || msgs.length == 0) {
+    void buildTagViews(String msg) {
+        if (msg == null) {
             return;
         }
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -625,17 +732,20 @@ public class KaidanMeter extends Activity {
         // Parse the first message in the list
         // Build views for all of the sub records
         Date now = new Date();
-        List<ParsedNdefRecord> records = NdefMessageParser.parse(msgs[0]);
-        final int size = records.size();
-        for (int i = 0; i < size; i++) {
+ //       List<ParsedNdefRecord> records = NdefMessageParser.parse(msgs[0]);
+ //       final int size = records.size();
+ //       for (int i = 0; i < size; i++) {
             TextView timeView = new TextView(this);
+            timeView.setTextColor(Color.BLACK);
             timeView.setText(timeFormat.format(now));
-            timeView.append("　階段を１階分、使用しました");
+            timeView.setTextSize(20);
+            timeView.append(msg);
             content.addView(timeView, 0);
-            ParsedNdefRecord record = records.get(i);
+/*            ParsedNdefRecord record = records.get(i);
             content.addView(record.getView(this, inflater, content, i), 1 + i);
             content.addView(inflater.inflate(R.layout.tag_divider, content, false), 2 + i);
-        }
+*/
+            //}
     }
 
     @Override
