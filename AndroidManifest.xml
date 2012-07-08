@@ -6,14 +6,12 @@
   android:installLocation="auto">
 
     <uses-sdk android:minSdkVersion="10" android:targetSdkVersion="10" />
-<!-- 
      <uses-permission android:name="android.permission.NFC" />
      <uses-feature android:name="android.hardware.nfc" />
--->
      <uses-permission android:name="android.permission.INTERNET" />    
      
     <application
-      android:icon="@drawable/icon2"
+      android:icon="@drawable/kdn48icon"
       android:label="@string/app_name" android:theme="@android:style/Theme.Translucent.NoTitleBar">
         <activity
           android:name="KaidanMeter"
@@ -25,11 +23,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-<!--            <intent-filter>
+            <intent-filter>
                 <action android:name="android.nfc.action.TAG_DISCOVERED"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
--->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

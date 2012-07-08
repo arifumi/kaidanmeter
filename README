@@ -9,15 +9,28 @@ ChangeLog
 -- ニックネームが設定されていない場合は、初回起動時に設定ダイアログをポップアップするようにした。
 - ステート対応した。
 -- １フロアあたり、3秒から30秒で移動する、という制限を儲けた。
-
+- MinSDKVersionはICタグ・バーコードリーダーは8になっている。TargetSDKは10。
+-- ただそれに合わせると、NFC周りのコードとの共存が面倒になるので、10にしといた。
+- session-idを表示するインターフェースが無いと、キャンペーンができないよ。->作った
+- アイコンがみづらいので、なんとかせよ。
+-- 背景色を黒にしてアイコンを見やすくした。
+- NFCとFelicaを同じバージョンで両立せよ。 -> した。
+- 見た目を良くする
+-- ちょっぴり改善。
+- オフライン処理(データ通信がオフの時に送信データをstoreしておいて、オンになったときに全部シンクする)
+-- アプリが終了しない限り実装済み。
 
 TODO
-- 見た目を良くする
 - 自分の階段利用データを手元の画面で参照できるようにしたいね。
 -- SQLiteを使って、保存データの構造化をしないと死ねる。
 -- objectのserializeでもいいかもしれないけど。
-- session-idを表示するインターフェースが無いと、キャンペーンができないよ。
 - オフライン処理(データ通信がオフの時に送信データをstoreしておいて、オンになったときに全部シンクする)
-- eclipseってgithubと連携できないの？
 - 不正防止の仕組みが必要。
 -- まずは共通鍵方式。postデータに対して、共通鍵を含んだMD5-hashを取って、それをchecksumとしてくっつける方式か？
+- SDK Version8で動作確認せよ。
+- AVDでaction.SENDのintentをadbから送信できるが、そのときにアプリが一度終了してしまうので、onresumeにpendingmoveを書き出さないと死ねる。
+-- ということで、pendingmoveを保存するようにしよう。
+-- resolveIntentの方が、onResume(pendingMoveを復元)よりも先に実行されるので困ってしまう。resolveIntentからonResumeを呼び出す？
+# am start -D -a android.intent.action.SEND -c android.intent.category.DEFAULT -t "text/plain" --es android.intent.extra.TEXT 0127005ca4d89ac9
+Starting: Intent { act=android.intent.action.SEND cat=[android.intent.category.DEFAULT] typ=text/plain (has extras) }
+
