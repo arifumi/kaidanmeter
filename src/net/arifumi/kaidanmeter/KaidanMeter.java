@@ -65,6 +65,7 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -140,6 +141,9 @@ public class KaidanMeter extends Activity {
         mTagContent = new LinearLayout(this);
         mTagContent.setOrientation(LinearLayout.VERTICAL);
         ll.addView(mTagContent, new LinearLayout.LayoutParams(FP, FP));
+        
+        // Keep screen on
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);    
         
     	try {
         	InputStream is = getAssets().open("kaidandata.txt");
@@ -242,10 +246,12 @@ public class KaidanMeter extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
         if (mAdapter != null) {
             mAdapter.enableForegroundDispatch(this, mPendingIntent, null, null);
         //    mAdapter.enableForegroundNdefPush(this, mNdefPushMessage);
         }
+
         manager = new CookieManager();  
 //   	 CookieHandler のデフォルトに設定
         CookieHandler.setDefault(manager);
@@ -255,18 +261,25 @@ public class KaidanMeter extends Activity {
         nickName = sp.getString("nick","");
         System.out.println("onResume sessionid="+sessionid+",nickname="+nickName);
 
-        try {
-            FileInputStream fis = openFileInput("pendingmove.dat");
-            ObjectInputStream ois = new ObjectInputStream(fis);
-            pendingMove = (kaidanMove) ois.readObject();
-            ois.close();
-        } catch (ClassNotFoundException e) {
-        	e.printStackTrace();
-    	} catch (FileNotFoundException e) {
-    		e.printStackTrace();
-    	} catch (IOException e) {
-    		e.printStackTrace();
+        /*
+        if (pendingMove==null) {
+        	try {
+        		FileInputStream fis = openFileInput("pendingmove.dat");
+        		ObjectInputStream ois = new ObjectInputStream(fis);
+        		pendingMove = (kaidanMove) ois.readObject();
+        		if (pendingMove != null) {
+        			buildTagViews("start="+pendingMove.floor_str_start+",end="+pendingMove.floor_str_end);
+        		}
+        		ois.close();
+        	} catch (ClassNotFoundException e) {
+        		e.printStackTrace();
+        	} catch (FileNotFoundException e) {
+        		e.printStackTrace();
+        	} catch (IOException e) {
+        		e.printStackTrace();
+        	}
         }
+        */
 
         // idListをシリアライズ化から戻す
         
@@ -286,8 +299,12 @@ public class KaidanMeter extends Activity {
         				int i = 0;
         				ArrayList<kaidanMove> delList = new ArrayList<kaidanMove>();
         				//System.out.println("movelist size ="+moveList.size());
+        				// movelistを読み取るときにもLock(つまりmHandlerにpostする)しないといけないんじゃね？
         				for(Iterator<kaidanMove> it = moveList.iterator(); it.hasNext() ; ){
         					final kaidanMove move = it.next();
+        					if (nickName==null || nickName=="") {
+        						nickName = "名無しさん";
+        					}
 
         					int result = httpPostRequest("start="+move.floor_num_start+"&end="+move.floor_num_end+"&nick="+nickName, "UTF-8");
         				    System.out.println(i+":"+move.floor_num_start+"->"+move.floor_num_end+"="+result);
@@ -316,6 +333,7 @@ public class KaidanMeter extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+
         if (mAdapter != null) {
             mAdapter.disableForegroundDispatch(this);
             mAdapter.disableForegroundNdefPush(this);
@@ -329,6 +347,8 @@ public class KaidanMeter extends Activity {
         SharedPreferences.Editor editor = sp.edit();
         editor.putString("id",sessionid);
         editor.putString("nick", nickName);
+        editor.commit();
+        /*
         if (pendingMove!=null) {
         	try {
         	    FileOutputStream fos = openFileOutput("pendingmove.dat", MODE_PRIVATE);
@@ -340,18 +360,26 @@ public class KaidanMeter extends Activity {
         	} catch (IOException e) {
         		e.printStackTrace();
         	}
+        } else {
+        	try {
+            	deleteFile("pendingmove.dat");        		
+        	} catch (Exception e) {
+        		e.printStackTrace();
+        	}
         }
-        editor.commit();
+        */
+
         System.out.println("onPause sessionid="+sessionid);
     }
 
     private void resolveIntent(Intent intent) {
     	System.out.println("resolveIntent:"+intent.toString());
+    	// buildTagViews("resolveIntent:"+intent.toString());
         // Parse the intent
         String action = intent.getAction();
         if (action.equalsIgnoreCase(Intent.ACTION_SEND) && intent.hasExtra(Intent.EXTRA_TEXT)) {
             mId = intent.getStringExtra(Intent.EXTRA_TEXT); 
-
+            //buildTagViews(mId+"をACTION_SENDから読み込みました");
             System.out.println(mId+"をACTION_SENDから読み込みました");
         } else if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) ||
         		NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action) ) {
@@ -387,22 +415,31 @@ public class KaidanMeter extends Activity {
         } else {
            	System.out.println("pendingMove!=null");
             	// 条件処理 (同じ階の場合は処理しない)
-                statusTV.setText("別の階でICタグを読み取ってください");
             	pendingMove.floor_num_end = Integer.parseInt(kaidanMap.get(mId).get(0));
             	if (pendingMove.floor_num_end == pendingMove.floor_num_start) {
+                    	statusTV.setText("別の階でICタグを読み取ってください");
             			return;
             	}
             	pendingMove.floor_str_end = kaidanMap.get(mId).get(1) + pendingMove.floor_num_end + "階";
             	pendingMove.timestamp_end = System.currentTimeMillis();
             	// 条件処理 (時間処理) 1フロアにつき、3秒〜30秒の制限時間を付ける
             	int floors = Math.abs(pendingMove.floor_num_end - pendingMove.floor_num_start);
-//        		floors = 1; //DEBUG
             	long duration = pendingMove.timestamp_end - pendingMove.timestamp_start;
-            	if (duration > 3000 * floors && duration < 30000 * floors ) {
+            	if (duration > 3000 * floors) {
             		moveList.add(pendingMove);
         			buildTagViews(pendingMove.floor_num_end+"階で利用終了");
                     statusTV.setText("階段の利用お疲れさまでした");
                     pendingMove = null;            		
+ /*           	} else if (duration >= 30000 * floors) {
+            		buildTagViews("階段の利用時間が超過しました。"+ duration);
+            		pendingMove = null;
+            		statusTV.setText("階段の利用を開始する階で、ICタグを読み取ってください");
+                	try {
+                    	deleteFile("pendingmove.dat");        		
+                	} catch (Exception e) {
+                		e.printStackTrace();
+                	}
+            	*/
             	}
             }
 
