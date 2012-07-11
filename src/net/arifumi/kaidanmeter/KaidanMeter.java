@@ -299,13 +299,13 @@ public class KaidanMeter extends Activity {
         				int i = 0;
         				ArrayList<kaidanMove> delList = new ArrayList<kaidanMove>();
         				//System.out.println("movelist size ="+moveList.size());
-        				// movelistを読み取るときにもLock(つまりmHandlerにpostする)しないといけないんじゃね？
         				for(Iterator<kaidanMove> it = moveList.iterator(); it.hasNext() ; ){
         					final kaidanMove move = it.next();
         					if (nickName==null || nickName=="") {
         						nickName = "名無しさん";
         					}
-
+						// ここでhttpPostRequest直後にタグ読み取りでonPauseを食らうとdelListとの不整合が生じる。
+						// threadの終了を待ってから、onPauseを実行するような仕組みが必要。
         					int result = httpPostRequest("start="+move.floor_num_start+"&end="+move.floor_num_end+"&nick="+nickName, "UTF-8");
         				    System.out.println(i+":"+move.floor_num_start+"->"+move.floor_num_end+"="+result);
          				    i++;
